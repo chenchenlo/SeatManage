@@ -1,0 +1,161 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title>jQuery-Seat-Charts</title>
+
+    <link rel="stylesheet" type="text/css" href="css/jquery.seat-charts.css">
+
+    <link rel="stylesheet" type="text/css" href="css/style.css">
+
+</head>
+<body>
+
+<div class="wrapper">
+    <div class="container">
+
+        <div id="seat-map">
+            <div class="front-indicator">门口</div>
+        </div>
+
+        <div class="booking-details">
+
+            <h3>已选中的座位 :</h3>
+
+            <ul id="selected-seats"></ul>
+
+            <br/><br/>
+
+            <button id="submit">提交</button>
+
+    </div>
+
+    </div>
+</div>
+
+<script type="text/javascript" src="js/jquery-1.11.0.min.js"></script>
+<script type="text/javascript" src="js/jquery.seat-charts.min.js"></script>
+<script type="text/javascript">
+    var firstSeatLabel = 1;
+
+    $(document).ready(function () {
+
+
+        var isSelect = false;
+        //楼层
+        var floor = GetUrlParam('floor');
+
+
+        var $cart = $('#selected-seats'),
+            $total = $('#total'),
+            sc = $('#seat-map').seatCharts({
+                map: [
+                    'eeeee',
+                    'eeeee',
+                    'eeeee',
+                    'eeeee',
+                    'eeeee',
+                    'eeeee',
+                    'eeeee',
+                    'eeeee',
+                    'eeeee',
+                    'eeeee',
+                ],
+                seats: {
+                    e: {
+                        classes: 'economy-class', //your custom CSS class
+                        category: '图书馆',
+                        floor:GetUrlParam('floor')
+                    }
+
+                },
+                naming: {
+                    top: false,
+                    getLabel: function (character, row, column) {
+                        return firstSeatLabel++;
+                    },
+                },
+                click: function () {
+                    if (this.status() == 'available') {
+                        if (!isSelect) {
+                            $('<li>' + this.data().category +this.data().floor+'楼'+ this.settings.label + '号座位' + '<br/> <a href="#" class="cancel-cart-item">[删除]</a></li>')
+                                .attr('id', 'cart-item-' + this.settings.id)
+                                .data('seatId', this.settings.id)
+                                .appendTo($cart);
+
+                            isSelect=true
+                            return 'selected';
+                        }else{
+                            alert("只能选择一个座位");
+                            return 'available';
+                        }
+                    } else if (this.status() == 'selected') {
+
+                        //remove the item from our cart
+                        $('#cart-item-' + this.settings.id).remove();
+
+                        isSelect=false;
+                        //seat has been vacated
+                        return 'available';
+                    } else if (this.status() == 'unavailable') {
+                        //seat has been already booked
+                        return 'unavailable';
+                    } else {
+                        return this.style();
+                    }
+                }
+            });
+
+        //this will handle "[cancel]" link clicks
+        $('#selected-seats').on('click', '.cancel-cart-item', function () {
+            //
+            sc.get($(this).parents('li:first').data('seatId')).click();
+        });
+
+
+        var seatArray = new Array();
+
+        $.ajax({
+            type: "POST",
+            url: "./seat/unavailable",
+            data: {floor: floor},
+            cache: false,
+            success: function (data) {
+                seatArray = data.array;
+                //let's pretend some seats have already been booked
+                sc.get(seatArray).status('unavailable');
+            },
+            error: function () {
+                alert("网络错误，数据更新失败");
+            }
+        });
+
+        //paraName 等找参数的名称
+        function GetUrlParam(paraName) {
+            var url = document.location.toString();
+            var arrObj = url.split("?");
+
+            if (arrObj.length > 1) {
+                var arrPara = arrObj[1].split("&");
+                var arr;
+
+                for (var i = 0; i < arrPara.length; i++) {
+                    arr = arrPara[i].split("=");
+
+                    if (arr != null && arr[0] == paraName) {
+                        return arr[1];
+                    }
+                }
+                return "";
+            }
+            else {
+                return "";
+            }
+        }
+
+    });
+
+</script>
+</body>
+</html>
